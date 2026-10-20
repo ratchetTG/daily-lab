@@ -1132,15 +1132,30 @@ function updateHeaderBank() {
   document.getElementById("totalScoreDisplay").textContent = `🏆 Total Score: ${total} pts (${done.length}/${VAULTS.length} played)`;
 }
 
+function getHighestUnlockedIdx() {
+  const all = getAllState();
+  for (let i = 0; i < VAULTS.length; i++) {
+    const s = all[VAULTS[i].id];
+    if (!s || !s.isFinished) return i;
+  }
+  return VAULTS.length - 1;
+}
+
 function initDropdown() {
   selectEl.innerHTML = "";
   const all = getAllState();
+  const maxUnlocked = getHighestUnlockedIdx();
   VAULTS.forEach((v, idx) => {
     const opt = document.createElement("option");
     opt.value = idx;
     const s = all[v.id];
-    const tag = s && s.isFinished ? (s.isLockedOut ? " (🔒 0 pts)" : ` (🔓 ${s.pts} pts)`) : (s && s.mistakes > 0 ? ` (${s.mistakes}/2 alarms)` : "");
-    opt.textContent = `Vault #${v.id}${tag}`;
+    if (idx > maxUnlocked) {
+      opt.disabled = true;
+      opt.textContent = `🔒 Vault #${v.id} (Complete #${VAULTS[idx-1].id} first)`;
+    } else {
+      const tag = s && s.isFinished ? (s.isLockedOut ? " (✗ 0 pts)" : ` (✓ ${s.pts} pts)`) : (s && s.mistakes > 0 ? ` (${s.mistakes}/2 alarms)` : " (OPEN)");
+      opt.textContent = `Vault #${v.id}${tag}`;
+    }
     selectEl.appendChild(opt);
   });
   selectEl.onchange = e => loadVault(parseInt(e.target.value));
@@ -1355,7 +1370,7 @@ function shareResult() {
 }
 
 initDropdown();
-if (VAULTS.length) loadVault(0);
+if (VAULTS.length) { const startIdx = getHighestUnlockedIdx(); selectEl.value = startIdx; loadVault(startIdx); }
 </script>
 
 <script>

@@ -1,0 +1,5 @@
+#!/bin/bash
+git add .
+git commit -m "Update Daily Lab: $(date +'%Y-%m-%d %H:%M')"
+git push
+echo "🚀 Update shipped! All installed phones will receive it automatically in ~30 seconds."

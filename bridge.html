@@ -388,15 +388,30 @@ function updateHeaderBank() {
   document.getElementById("totalScoreDisplay").textContent = `🏆 Total Score: ${total} pts (${done.length}/${PUZZLES.length} played)`;
 }
 
+function getHighestUnlockedIdx() {
+  const all = getAllState();
+  for (let i = 0; i < PUZZLES.length; i++) {
+    const s = all[PUZZLES[i].id];
+    if (!s || !s.gameOver) return i;
+  }
+  return PUZZLES.length - 1;
+}
+
 function initDropdown() {
   selectEl.innerHTML = "";
   const all = getAllState();
+  const maxUnlocked = getHighestUnlockedIdx();
   PUZZLES.forEach((p, i) => {
     const opt = document.createElement("option");
     opt.value = i;
     const s = all[p.id];
-    const tag = s && s.gameOver ? (s.wonGame ? ` (🔗 ${s.pts} pts)` : " (🔒 0 pts)") : (s && s.guesses.length > 0 ? ` (${s.guesses.length}/5)` : "");
-    opt.textContent = `Bridge #${p.id}${tag}`;
+    if (i > maxUnlocked) {
+      opt.disabled = true;
+      opt.textContent = `🔒 Bridge #${p.id} (Complete #${PUZZLES[i-1].id} first)`;
+    } else {
+      const tag = s && s.gameOver ? (s.wonGame ? ` (✓ ${s.pts} pts)` : " (✗ 0 pts)") : (s && s.guesses.length > 0 ? ` (${s.guesses.length}/5)` : " (OPEN)");
+      opt.textContent = `Bridge #${p.id}${tag}`;
+    }
     selectEl.appendChild(opt);
   });
   selectEl.onchange = e => loadPuzzle(parseInt(e.target.value));
@@ -602,7 +617,7 @@ function shareResult() {
 }
 
 initDropdown();
-loadPuzzle(0);
+const startIdx = getHighestUnlockedIdx(); selectEl.value = startIdx; loadPuzzle(startIdx);
 </script>
 
 <script>
