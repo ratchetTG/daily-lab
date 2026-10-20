@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daily-lab-v5';
+const CACHE_NAME = 'daily-lab-v6';
 const ASSETS = ['./index.html', './bridge.html', './vault.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', event => {
