@@ -441,8 +441,14 @@ function loadPuzzle(idx) {
   lastRowAnim = null;
   if (saved) {
     guesses = saved.guesses || [];
-    lockedGreens = saved.lockedGreens || [null,null,null,null,null];
-    requiredYellows = new Set(saved.requiredYellows || []);
+    lockedGreens = [null,null,null,null,null];
+    requiredYellows = new Set();
+    guesses.forEach(g => {
+      g.colors.forEach((c, idx) => {
+        if (c === "green") lockedGreens[idx] = g.word[idx];
+        if (c === "yellow") requiredYellows.add(g.word[idx]);
+      });
+    });
     gameOver = saved.gameOver || false;
     wonGame = saved.wonGame || false;
   } else {
@@ -463,8 +469,10 @@ function goNextBridge() {
   loadPuzzle(getHighestUnlockedIdx());
 }
 
-function setMsg(txt) { document.getElementById("msgBox").textContent = txt; }
-function initNextInputRow() { currentGuess = lockedGreens.map(ch => ch ? ch : ""); }
+function setMsg(txt) { const el = document.getElementById("msgBox"); el.style.color = "#fca5a5"; el.textContent = txt; }
+function initNextInputRow() {
+  currentGuess = [0,1,2,3,4].map(i => lockedGreens[i] ? lockedGreens[i] : "");
+}
 
 function evaluateGuess(word, ans) {
   const res = ["grey","grey","grey","grey","grey"], ansCount = {};
@@ -579,6 +587,16 @@ function render() {
       rowDiv.appendChild(cell);
     }
     gridEl.appendChild(rowDiv);
+  }
+
+  // Show persistent reminder of required Yellow letters if msgBox is empty
+  const msgEl = document.getElementById("msgBox");
+  const activeYellows = Array.from(requiredYellows).filter(y => !lockedGreens.includes(y));
+  if (!gameOver && activeYellows.length > 0 && !msgEl.textContent.startsWith("Strict") && !msgEl.textContent.startsWith("Fill")) {
+    msgEl.style.color = "#fde047";
+    msgEl.textContent = `🟨 Must include in your word: ${activeYellows.join(", ")}`;
+  } else if (msgEl.textContent.startsWith("🟨")) {
+    msgEl.textContent = "";
   }
 
   const m = document.getElementById("winModal");
