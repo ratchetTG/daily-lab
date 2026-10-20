@@ -251,6 +251,21 @@
     box-shadow: 0 4px 0 #240c0b !important;
   }
 
+
+  .level-badge {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #facc15;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(250, 204, 21, 0.45);
+    box-shadow: 0 4px 0 #090d16, inset 0 1px 0 rgba(255,255,255,0.15);
+    pointer-events: none;
+  }
+
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e293b">
@@ -270,7 +285,7 @@
     <div class="bank-score" id="totalScoreDisplay">🏆 Total Score: 0 pts</div>
   </div>
   <div>
-    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><select id="puzzleSelect"></select>
+    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><div id="puzzleSelect" class="level-badge">BRIDGE #1</div>
   </div>
 </header>
 
@@ -398,27 +413,14 @@ function getHighestUnlockedIdx() {
 }
 
 function initDropdown() {
-  selectEl.innerHTML = "";
-  const all = getAllState();
-  const maxUnlocked = getHighestUnlockedIdx();
-  PUZZLES.forEach((p, i) => {
-    const opt = document.createElement("option");
-    opt.value = i;
-    const s = all[p.id];
-    if (i > maxUnlocked) {
-      opt.disabled = true;
-      opt.textContent = `🔒 Bridge #${p.id} (Complete #${PUZZLES[i-1].id} first)`;
-    } else {
-      const tag = s && s.gameOver ? (s.wonGame ? ` (✓ ${s.pts} pts)` : " (✗ 0 pts)") : (s && s.guesses.length > 0 ? ` (${s.guesses.length}/5)` : " (OPEN)");
-      opt.textContent = `Bridge #${p.id}${tag}`;
-    }
-    selectEl.appendChild(opt);
-  });
-  selectEl.onchange = e => loadPuzzle(parseInt(e.target.value));
+  if (currentPuzzle && selectEl) {
+    selectEl.textContent = `BRIDGE #${currentPuzzle.id}`;
+  }
 }
 
 function loadPuzzle(idx) {
   currentPuzzle = PUZZLES[idx];
+  if (selectEl) selectEl.textContent = `BRIDGE #${currentPuzzle.id}`;
   const saved = getAllState()[currentPuzzle.id];
   lastRowAnim = null;
   if (saved) {
@@ -441,8 +443,7 @@ function loadPuzzle(idx) {
 }
 
 function goNextBridge() {
-  const nextIdx = (parseInt(selectEl.value) + 1) % PUZZLES.length;
-  selectEl.value = nextIdx;
+  const nextIdx = getHighestUnlockedIdx();
   loadPuzzle(nextIdx);
 }
 
@@ -507,8 +508,7 @@ function submitGuess() {
   }
 
   saveBridgeState();
-  const curIdx = parseInt(selectEl.value);
-  initDropdown(); selectEl.value = curIdx;
+  initDropdown();
   updateHeaderBank();
   render();
 }
@@ -617,7 +617,7 @@ function shareResult() {
 }
 
 initDropdown();
-const startIdx = getHighestUnlockedIdx(); selectEl.value = startIdx; loadPuzzle(startIdx);
+loadPuzzle(getHighestUnlockedIdx());
 </script>
 
 <script>

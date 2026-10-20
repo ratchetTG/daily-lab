@@ -165,6 +165,21 @@
     font-weight: 700 !important;
   }
 
+
+  .level-badge {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #facc15;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(250, 204, 21, 0.45);
+    box-shadow: 0 4px 0 #090d16, inset 0 1px 0 rgba(255,255,255,0.15);
+    pointer-events: none;
+  }
+
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e293b">
@@ -184,7 +199,7 @@
     <div class="bank-score" id="totalScoreDisplay">🏆 Total Score: 0 pts</div>
   </div>
   <div>
-    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><select id="puzzleSelect"></select>
+    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><div id="puzzleSelect" class="level-badge">PUZZLE #1</div>
   </div>
 </header>
 
@@ -1430,23 +1445,9 @@ function getHighestUnlockedIdx() {
 }
 
 function initDropdown() {
-  selectEl.innerHTML = "";
-  const all = getAllState();
-  const maxUnlocked = getHighestUnlockedIdx();
-  PUZZLES.forEach((p, idx) => {
-    const opt = document.createElement("option");
-    opt.value = idx;
-    const s = all[p.id];
-    if (idx > maxUnlocked) {
-      opt.disabled = true;
-      opt.textContent = `🔒 Puzzle #${p.id} (Complete #${PUZZLES[idx-1].id} first)`;
-    } else {
-      const tag = s && s.isFinished ? ` (✓ ${s.pts} pts)` : (s && s.swapsUsed > 0 ? ` (In progress: ${s.swapsUsed})` : " (OPEN)");
-      opt.textContent = `Puzzle #${p.id}${tag}`;
-    }
-    selectEl.appendChild(opt);
-  });
-  selectEl.onchange = e => loadPuzzle(parseInt(e.target.value));
+  if (currentPuzzle && selectEl) {
+    selectEl.textContent = `PUZZLE #${currentPuzzle.id}`;
+  }
 }
 
 function getSolutionArray(p) {
@@ -1483,6 +1484,7 @@ function computeColors(currentTiles, p) {
 
 function loadPuzzle(idx) {
   currentPuzzle = PUZZLES[idx];
+  if (selectEl) selectEl.textContent = `PUZZLE #${currentPuzzle.id}`;
   const saved = getAllState()[currentPuzzle.id];
   if (saved) {
     tiles = [...saved.tiles];
@@ -1501,8 +1503,7 @@ function loadPuzzle(idx) {
 }
 
 function goNextPuzzle() {
-  const nextIdx = (parseInt(selectEl.value) + 1) % PUZZLES.length;
-  selectEl.value = nextIdx;
+  const nextIdx = getHighestUnlockedIdx();
   loadPuzzle(nextIdx);
 }
 
@@ -1544,8 +1545,7 @@ function render() {
     isFinished = true;
     const pts = calcPoints(swapsUsed, currentPuzzle.par);
     savePuzzleState(currentPuzzle.id, { tiles, swapsUsed, historyLog, isFinished: true, pts });
-    const curIdx = parseInt(selectEl.value);
-    initDropdown(); selectEl.value = curIdx;
+    initDropdown();
     showWinModal(pts);
   } else {
     document.getElementById("winModal").classList.remove("active");
@@ -1569,9 +1569,7 @@ function onTileTap(idx, color) {
     const pts = allGreen ? calcPoints(swapsUsed, currentPuzzle.par) : calcLivePreviewPoints(swapsUsed, currentPuzzle.par);
     savePuzzleState(currentPuzzle.id, { tiles, swapsUsed, historyLog, isFinished: allGreen, pts });
 
-    const curIdx = parseInt(selectEl.value);
     initDropdown();
-    selectEl.value = curIdx;
     updateHeaderBank();
     render();
   }
@@ -1597,7 +1595,7 @@ function shareResult() {
 }
 
 initDropdown();
-if (PUZZLES.length) { const startIdx = getHighestUnlockedIdx(); selectEl.value = startIdx; loadPuzzle(startIdx); }
+if (PUZZLES.length) { loadPuzzle(getHighestUnlockedIdx()); }
 </script>
 
 <script>
