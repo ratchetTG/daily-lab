@@ -180,6 +180,22 @@
     pointer-events: none;
   }
 
+
+  .level-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #facc15;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(250, 204, 21, 0.5);
+    box-shadow: 0 4px 0 #090d16, inset 0 1px 0 rgba(255,255,255,0.15);
+    user-select: none;
+  }
+
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e293b">
@@ -199,7 +215,7 @@
     <div class="bank-score" id="totalScoreDisplay">🏆 Total Score: 0 pts</div>
   </div>
   <div>
-    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><div id="puzzleSelect" class="level-badge">PUZZLE #1</div>
+    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><span id="levelBadge" class="level-pill">PUZZLE #1</span>
   </div>
 </header>
 
@@ -1399,7 +1415,7 @@ const COORDS = [
 ];
 
 let currentPuzzle = null, tiles = [], selectedIdx = null, swapsUsed = 0, historyLog = [], isFinished = false;
-const selectEl = document.getElementById("puzzleSelect");
+const badgeEl = document.getElementById("levelBadge");
 const STATE_KEY = "swap_cross_oneshot_state_v2";
 
 function getAllState() {
@@ -1445,11 +1461,10 @@ function getHighestUnlockedIdx() {
 }
 
 function initDropdown() {
-  if (currentPuzzle && selectEl) {
-    selectEl.textContent = `PUZZLE #${currentPuzzle.id}`;
-  }
+  const el = document.getElementById("levelBadge");
+  if (el && typeof currentPuzzle !== "undefined" && currentPuzzle) el.textContent = `PUZZLE #${currentPuzzle.id}`;
+  if (el && typeof currentVault !== "undefined" && currentVault) el.textContent = `PUZZLE #${currentVault.id}`;
 }
-
 function getSolutionArray(p) {
   return [
     p.top[0], p.top[1], p.top[2], p.top[3], p.top[4],
@@ -1484,7 +1499,8 @@ function computeColors(currentTiles, p) {
 
 function loadPuzzle(idx) {
   currentPuzzle = PUZZLES[idx];
-  if (selectEl) selectEl.textContent = `PUZZLE #${currentPuzzle.id}`;
+  const bEl = document.getElementById('levelBadge'); if (bEl) bEl.textContent = 'PUZZLE #' + currentPuzzle.id;
+  if (document.getElementById('levelBadge')) document.getElementById('levelBadge').textContent = `PUZZLE #${currentPuzzle.id}`;
   const saved = getAllState()[currentPuzzle.id];
   if (saved) {
     tiles = [...saved.tiles];
@@ -1503,8 +1519,7 @@ function loadPuzzle(idx) {
 }
 
 function goNextPuzzle() {
-  const nextIdx = getHighestUnlockedIdx();
-  loadPuzzle(nextIdx);
+  loadPuzzle(getHighestUnlockedIdx());
 }
 
 function render() {
