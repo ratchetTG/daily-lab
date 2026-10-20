@@ -456,6 +456,7 @@ function loadPuzzle(idx) {
   setMsg("");
   updateHeaderBank();
   render();
+  setTimeout(() => { lastRowAnim = null; }, 450);
 }
 
 function goNextBridge() {
@@ -481,6 +482,7 @@ function evaluateGuess(word, ans) {
 
 function onKey(k) {
   if (gameOver) return;
+  lastRowAnim = null;
   setMsg("");
   if (k === "BACK") {
     for (let i = 4; i >= 0; i--) {
@@ -526,6 +528,7 @@ function submitGuess() {
   initDropdown();
   updateHeaderBank();
   render();
+  setTimeout(() => { lastRowAnim = null; }, 450);
 }
 
 function render() {
