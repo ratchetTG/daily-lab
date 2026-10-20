@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>THE VAULT — Daily Lab</title>
+<style>
+  :root {
+    --bg: #121213; --panel: #1e1e20; --green: #538d4e;
+    --yellow: #b59f3b; --grey: #27272a; --text: #ffffff;
+    --accent: #38bdf8; --gold: #facc15; --danger: #ef4444;
+  }
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 14px; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+  }
+  .nav-tabs {
+    display: flex; gap: 6px; width: 100%; max-width: 440px; margin-bottom: 12px;
+    background: var(--panel); padding: 6px; border-radius: 10px;
+  }
+  .nav-tabs a {
+    flex: 1; text-align: center; padding: 8px 0; border-radius: 6px;
+    color: #e4e4e7; text-decoration: none; font-weight: 700; font-size: 0.92rem;
+  }
+  .nav-tabs a.active { background: #2e2e32; color: var(--accent); }
+  header {
+    width: 100%; max-width: 440px; display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid #2e2e30; padding-bottom: 10px; margin-bottom: 12px;
+  }
+  .title-wrap { display: flex; flex-direction: column; }
+  h1 { font-size: 1.2rem; letter-spacing: 2px; margin: 0; }
+  .bank-score { font-size: 0.82rem; color: var(--gold); font-weight: 700; margin-top: 2px; }
+  select, button {
+    background: var(--panel); color: var(--text); border: 1px solid #3a3a3c;
+    border-radius: 6px; padding: 6px 10px; font-size: 0.9rem; cursor: pointer;
+  }
+  /* Stadium Scoreboard */
+  .scoreboard {
+    width: 100%; max-width: 440px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat-card {
+    background: var(--panel); border: 2px solid #2e2e32;
+    border-radius: 10px; padding: 10px 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .stat-card.alarm-safe { border-color: var(--green); background: rgba(83, 141, 78, 0.12); }
+  .stat-card.alarm-safe .stat-val { color: #6ee7b7; }
+  .stat-card.alarm-warn { border-color: #f97316; background: rgba(249, 115, 22, 0.14); }
+  .stat-card.alarm-warn .stat-val { color: #fb923c; }
+  .stat-card.alarm-crit { border-color: var(--danger); background: rgba(239, 68, 68, 0.18); }
+  .stat-card.alarm-crit .stat-val { color: #f87171; }
+  .stat-card.pts-card { border-color: rgba(250, 204, 21, 0.45); }
+  .stat-label {
+    font-size: 0.76rem; font-weight: 800; letter-spacing: 0.8px;
+    color: #e4e4e7; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .stat-val { font-size: 1.65rem; font-weight: 900; line-height: 1; }
+  .pts-high { color: var(--gold); }
+  .pts-mid { color: var(--accent); }
+  .pts-low { color: #f87171; }
+
+  .sub-rule {
+    width: 100%; max-width: 440px; background: var(--panel); padding: 10px 14px;
+    border-radius: 8px; font-size: 0.95rem; color: #f4f4f5; line-height: 1.5;
+    border: 1px solid #3f3f46; margin-bottom: 12px; text-align: center;
+  }
+  .ladder { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .rung {
+    background: var(--panel); border: 2px solid #2e2e30; border-radius: 10px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .rung.active { border-color: var(--accent); background: #232329; }
+  .rung.solved { border-color: var(--green); cursor: default; }
+  .rung.failed-reveal { border-color: var(--danger); background: rgba(239, 68, 68, 0.12); cursor: default; }
+
+  /* Red Shake Animation for Wrong Answer */
+  @keyframes alarmShake {
+    0%, 100% { transform: translateX(0); }
+    15%, 45%, 75% { transform: translateX(-10px); }
+    30%, 60%, 90% { transform: translateX(10px); }
+  }
+  .rung.wrong-shake {
+    border-color: var(--danger) !important;
+    background: rgba(239, 68, 68, 0.28) !important;
+    animation: alarmShake 0.45s ease-in-out;
+  }
+  .rung.wrong-shake .tile {
+    background: var(--danger) !important;
+    border-color: #fca5a5 !important;
+    color: #ffffff !important;
+  }
+
+
+  @keyframes tilePopWave {
+    0% { transform: scale(1) translateY(0); }
+    40% { transform: scale(1.18) translateY(-10px); background: #22c55e; border-color: #facc15; box-shadow: 0 8px 18px rgba(34, 197, 94, 0.55); }
+    75% { transform: scale(0.96) translateY(2px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+  @keyframes rungGlowPulse {
+    0% { box-shadow: 0 0 0 rgba(83, 141, 78, 0); border-color: #facc15; }
+    45% { box-shadow: 0 0 26px rgba(34, 197, 94, 0.75); border-color: #facc15; background: rgba(34, 197, 94, 0.22); }
+    100% { box-shadow: 0 0 0 rgba(83, 141, 78, 0); border-color: var(--green); }
+  }
+  .rung.just-solved {
+    animation: rungGlowPulse 0.85s ease-out;
+  }
+  .rung.just-solved .tile {
+    animation: tilePopWave 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .rung.just-solved .tile:nth-child(1) { animation-delay: 0.00s; }
+  .rung.just-solved .tile:nth-child(2) { animation-delay: 0.07s; }
+  .rung.just-solved .tile:nth-child(3) { animation-delay: 0.14s; }
+  .rung.just-solved .tile:nth-child(4) { animation-delay: 0.21s; }
+  .rung.just-solved .tile:nth-child(5) { animation-delay: 0.28s; }
+
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(85vh) rotate(720deg); opacity: 0; }
+  }
+  .confetti-piece {
+    position: fixed; top: 0; width: 10px; height: 14px;
+    border-radius: 2px; pointer-events: none; z-index: 999;
+    animation: confettiFall 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+
+  .rung-header {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 1.02rem; font-weight: 700; color: #ffffff;
+  }
+  .rung-badge { font-size: 0.8rem; font-weight: 800; padding: 3px 7px; border-radius: 4px; background: #3f3f46; color: var(--accent); }
+  .tiles { display: flex; gap: 8px; justify-content: center; }
+  .tile {
+    width: 52px; height: 52px; border: 2px solid #3f3f46; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.55rem; font-weight: 800; background: #18181b;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .rung.solved .tile { background: var(--green); border-color: var(--green); }
+  .rung.failed-reveal .tile { background: #7f1d1d; border-color: var(--danger); }
+
+  .keyboard { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 6px; }
+  .kb-row { display: flex; justify-content: center; gap: 5px; }
+  .key {
+    flex: 1; height: 48px; max-width: 40px; background: #52525b; color: #fff;
+    border: none; border-radius: 6px; font-weight: 700; font-size: 1.05rem; cursor: pointer;
+  }
+  .key.wide { max-width: 66px; font-size: 0.85rem; }
+  .key.neighbor-hint { background: var(--yellow); color: #fff; }
+  .modal {
+    display: none; flex-direction: column; align-items: center; background: var(--panel);
+    border: 2px solid var(--gold); padding: 18px; border-radius: 12px; width: 100%; max-width: 440px;
+    text-align: center; margin-bottom: 14px;
+  }
+  .modal.active { display: flex; }
+  .modal.locked-out { border-color: var(--danger); }
+  .modal-btns { display: flex; gap: 10px; margin-top: 12px; }
+  .share-btn { background: var(--green); border: none; font-weight: 700; padding: 10px 16px; color:#fff; }
+  .next-btn { background: var(--accent); border: none; font-weight: 700; padding: 10px 16px; color:#000; }
+
+  body {
+    background: radial-gradient(circle at 50% 18%, #3b4c66 0%, #1e293b 55%, #0f172a 100%) !important;
+    background-attachment: fixed !important;
+  }
+  .nav-tabs {
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  }
+  .nav-tabs a.active {
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 0 #0369a1, 0 4px 10px rgba(0,0,0,0.3) !important;
+  }
+  .stat-card, .legend, .sub-rule, .clues-box, .modal {
+    background: linear-gradient(180deg, rgba(45, 58, 79, 0.92) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    box-shadow: 0 6px 0 #0f172a, 0 10px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18) !important;
+  }
+  .tile, .cell {
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 6px 0 #0f172a, 0 8px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.45) !important;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease !important;
+  }
+  .tile:active, .key:active, button:active {
+    transform: translateY(4px) !important;
+    box-shadow: 0 2px 0 #0f172a, 0 3px 6px rgba(0,0,0,0.3) !important;
+  }
+  .tile.green, .cell.green, .rung.solved .tile, .key.green {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%) !important;
+    border-color: #4ade80 !important;
+    box-shadow: 0 6px 0 #14532d, 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+  }
+  .tile.yellow, .cell.yellow, .key.yellow, .key.neighbor-hint {
+    background: linear-gradient(180deg, #eab308 0%, #b45309 100%) !important;
+    border-color: #fde047 !important;
+    box-shadow: 0 6px 0 #78350f, 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+  }
+  .tile.grey, .cell.grey {
+    background: linear-gradient(180deg, #475569 0%, #334155 100%) !important;
+    border-color: #64748b !important;
+    box-shadow: 0 6px 0 #1e293b, 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+  }
+  .rung {
+    background: linear-gradient(180deg, rgba(45, 58, 79, 0.9) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+    box-shadow: 0 6px 0 #0f172a, 0 10px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+  }
+  .key {
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 0 #1e293b, 0 5px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  }
+  .key.grey {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #64748b !important;
+    box-shadow: 0 3px 0 #090d16 !important;
+  }
+  select, button {
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 0 #0f172a !important;
+    font-weight: 700 !important;
+  }
+
+
+  body {
+    background: radial-gradient(circle at 50% 16%, #469478 0%, #1d5442 50%, #0b241c 100%) !important;
+    background-attachment: fixed !important;
+  }
+  .nav-tabs {
+    background: rgba(8, 28, 21, 0.72) !important;
+    border-color: rgba(167, 243, 208, 0.2) !important;
+  }
+  .nav-tabs a.active {
+    background: linear-gradient(180deg, #10b981 0%, #047857 100%) !important;
+    box-shadow: 0 3px 0 #064e3b, 0 4px 10px rgba(0,0,0,0.35) !important;
+  }
+  .stat-card, .sub-rule, .rung, .modal {
+    background: linear-gradient(180deg, rgba(22, 68, 53, 0.92) 0%, rgba(13, 43, 34, 0.96) 100%) !important;
+    border: 1px solid rgba(167, 243, 208, 0.2) !important;
+    box-shadow: 0 6px 0 #071913, 0 10px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  }
+  .rung.active {
+    border: 2px solid #facc15 !important;
+    background: linear-gradient(180deg, rgba(31, 92, 72, 0.95) 0%, rgba(18, 59, 46, 0.98) 100%) !important;
+  }
+  .rung-badge {
+    background: #0f382b !important;
+    color: #fde047 !important;
+    border: 1px solid rgba(250, 204, 21, 0.35) !important;
+  }
+  .tile {
+    background: linear-gradient(180deg, #11362a 0%, #092119 100%) !important;
+    border-color: rgba(167, 243, 208, 0.25) !important;
+    box-shadow: 0 6px 0 #04120d, 0 8px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  }
+  .key {
+    background: linear-gradient(180deg, #2d6b56 0%, #1d4d3d 100%) !important;
+    border-color: rgba(167, 243, 208, 0.25) !important;
+    box-shadow: 0 4px 0 #092119, 0 5px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  }
+  select, button {
+    background: linear-gradient(180deg, #1f5744 0%, #12382b 100%) !important;
+    border-color: rgba(167, 243, 208, 0.25) !important;
+    box-shadow: 0 4px 0 #071913 !important;
+  }
+
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e293b">
+<link rel="apple-touch-icon" href="icon.svg">
+</head>
+<body>
+
+<nav class="nav-tabs">
+  <a href="index.html">1. SWAP / CROSS</a>
+  <a href="bridge.html">2. BRIDGE</a>
+  <a href="vault.html" class="active">3. THE VAULT</a>
+</nav>
+
+<header>
+  <div class="title-wrap">
+    <h1>THE VAULT</h1>
+    <div class="bank-score" id="totalScoreDisplay">🏆 Total Score: 0 pts</div>
+  </div>
+  <div>
+    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><select id="puzzleSelect"></select>
+  </div>
+</header>
+
+<div class="scoreboard">
+  <div class="stat-card">
+    <div class="stat-label">CRACKED</div>
+    <div class="stat-val" id="crackedVal">1/5</div>
+  </div>
+  <div class="stat-card alarm-safe" id="alarmCard">
+    <div class="stat-label">🚨 MISTAKES</div>
+    <div class="stat-val" id="mistakesVal">0/2</div>
+  </div>
+  <div class="stat-card pts-card">
+    <div class="stat-label">SCORE</div>
+    <div class="stat-val pts-high" id="scoreVal">100</div>
+  </div>
+</div>
+
+<div class="sub-rule">
+  Each rung keeps <strong>4 of 5 letters</strong> from its neighbor + 1 new letter.<br>
+  <strong>SCORING:</strong> 0 Mistakes = <strong>100 pts</strong> &bull; 1 Mistake = <strong>70 pts</strong> &bull; 2 Mistakes = <strong>40 pts</strong> &bull; 3rd Mistake = <strong>🔒 LOCKOUT (0 pts)</strong>!
+</div>
+
+<div class="ladder" id="ladder"></div>
+
+<div class="modal" id="winModal">
+  <h2 id="modalTitle" style="margin:0 0 6px 0;"></h2>
+  <p id="modalSub" style="margin:0 0 6px 0; font-size:1rem; color:#ffffff; font-weight:700;"></p>
+  <p id="modalPath" style="margin:0; font-size:0.9rem; color:#d4d4d8;"></p>
+  <div class="modal-btns">
+    <button class="share-btn" onclick="shareResult()">Share Score</button>
+    <button class="next-btn" onclick="goNextVault()">Next Vault ➔</button>
+  </div>
+</div>
+
+<div class="keyboard" id="keyboard"></div>
+
+<script>
+/* VAULTS_START */
+const VAULTS = [
+  {
+    "id": 1,
+    "rungs": [
+      {
+        "word": "PAPER",
+        "clue": "Rung 1 (Anchor): Daily news / Rock, _____, scissors"
+      },
+      {
+        "word": "SPARE",
+        "clue": "Rung 2: Extra tyre in the boot"
+      },
+      {
+        "word": "PROSE",
+        "clue": "Rung 3: Plain writing, not poetry"
+      },
+      {
+        "word": "POISE",
+        "clue": "Rung 4: Cool composure under pressure"
+      },
+      {
+        "word": "NOISE",
+        "clue": "Rung 5: White _____ / Racket"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "rungs": [
+      {
+        "word": "PARKS",
+        "clue": "Rung 1 (Anchor): Phoenix & St Stephen's"
+      },
+      {
+        "word": "SHARK",
+        "clue": "Rung 2: Loan _____ / Great White"
+      },
+      {
+        "word": "SHARP",
+        "clue": "Rung 3: Razor-edged \u2014 or on the dot"
+      },
+      {
+        "word": "SHARE",
+        "clue": "Rung 4: Split a secret \u2014 or a pizza"
+      },
+      {
+        "word": "HEART",
+        "clue": "Rung 5: Change of _____ / Core"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "rungs": [
+      {
+        "word": "TIGER",
+        "clue": "Rung 1 (Anchor): Celtic _____ / Striped cat"
+      },
+      {
+        "word": "TRIED",
+        "clue": "Rung 2: Put to the test"
+      },
+      {
+        "word": "TRADE",
+        "clue": "Rung 3: Swap / Craft"
+      },
+      {
+        "word": "LATER",
+        "clue": "Rung 4: See you _____ / Afterwards"
+      },
+      {
+        "word": "CATER",
+        "clue": "Rung 5: Provide food for an event"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "rungs": [
+      {
+        "word": "REACH",
+        "clue": "Rung 1 (Anchor): Out of _____ / Arm's length"
+      },
+      {
+        "word": "CHEAP",
+        "clue": "Rung 2: Dirt _____ / Ryanair seat sale"
+      },
+      {
+        "word": "CAPER",
+        "clue": "Rung 3: Heist \u2014 or pickled bud"
+      },
+      {
+        "word": "TRACE",
+        "clue": "Rung 4: Vanish without a _____"
+      },
+      {
+        "word": "LATER",
+        "clue": "Rung 5: See you _____ / Afterwards"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "rungs": [
+      {
+        "word": "SHANK",
+        "clue": "Rung 1 (Anchor): Lamb cut / Golf mishit"
+      },
+      {
+        "word": "SHARK",
+        "clue": "Rung 2: Loan _____ / Great White"
+      },
+      {
+        "word": "SPARK",
+        "clue": "Rung 3: Bright flash / Electrician"
+      },
+      {
+        "word": "SHARP",
+        "clue": "Rung 4: Razor-edged \u2014 or on the dot"
+      },
+      {
+        "word": "SHARE",
+        "clue": "Rung 5: Split a secret \u2014 or a pizza"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "rungs": [
+      {
+        "word": "TIGER",
+        "clue": "Rung 1 (Anchor): Celtic _____ / Striped cat"
+      },
+      {
+        "word": "TIRED",
+        "clue": "Rung 2: Ready for bed after 11 PM"
+      },
+      {
+        "word": "TRADE",
+        "clue": "Rung 3: Swap / Craft"
+      },
+      {
+        "word": "TRACE",
+        "clue": "Rung 4: Vanish without a _____"
+      },
+      {
+        "word": "CHART",
+        "clue": "Rung 5: Top 40 list / Sea map"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "rungs": [
+      {
+        "word": "HEART",
+        "clue": "Rung 1 (Anchor): Change of _____ / Core"
+      },
+      {
+        "word": "TRADE",
+        "clue": "Rung 2: Swap / Craft"
+      },
+      {
+        "word": "TAPER",
+        "clue": "Rung 3: Fade gradually / Barber's neckline"
+      },
+      {
+        "word": "PARTS",
+        "clue": "Rung 4: Spare _____ / Roles"
+      },
+      {
+        "word": "SPARK",
+        "clue": "Rung 5: Bright flash / Electrician"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "rungs": [
+      {
+        "word": "CRANE",
+        "clue": "Rung 1 (Anchor): Dublin skyline lifting machine"
+      },
+      {
+        "word": "CAPER",
+        "clue": "Rung 2: Heist \u2014 or pickled bud"
+      },
+      {
+        "word": "PEACH",
+        "clue": "Rung 3: Stone fruit / Absolute beauty"
+      },
+      {
+        "word": "CHEAT",
+        "clue": "Rung 4: Card shark / Cut corners"
+      },
+      {
+        "word": "WATCH",
+        "clue": "Rung 5: Wrist timepiece / Keep an eye on"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "rungs": [
+      {
+        "word": "COAST",
+        "clue": "Rung 1 (Anchor): East _____ / Freewheel"
+      },
+      {
+        "word": "TOAST",
+        "clue": "Rung 2: Raise a glass / Burnt bread"
+      },
+      {
+        "word": "STATE",
+        "clue": "Rung 3: Mindset / Declare"
+      },
+      {
+        "word": "SLATE",
+        "clue": "Rung 4: Clean _____ / Roof tile"
+      },
+      {
+        "word": "LATER",
+        "clue": "Rung 5: See you _____ / Afterwards"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "rungs": [
+      {
+        "word": "THICK",
+        "clue": "Rung 1 (Anchor): Through _____ and thin"
+      },
+      {
+        "word": "THINK",
+        "clue": "Rung 2: Use your head / Ponder"
+      },
+      {
+        "word": "THANK",
+        "clue": "Rung 3: Show gratitude"
+      },
+      {
+        "word": "SHANK",
+        "clue": "Rung 4: Lamb cut / Golf mishit"
+      },
+      {
+        "word": "SHARK",
+        "clue": "Rung 5: Loan _____ / Great White"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "rungs": [
+      {
+        "word": "TREAT",
+        "clue": "Rung 1 (Anchor): Guilty pleasure / Pick up the bill"
+      },
+      {
+        "word": "TRADE",
+        "clue": "Rung 2: Swap / Craft"
+      },
+      {
+        "word": "HEART",
+        "clue": "Rung 3: Change of _____ / Core"
+      },
+      {
+        "word": "TAPER",
+        "clue": "Rung 4: Fade gradually / Barber's neckline"
+      },
+      {
+        "word": "TRACE",
+        "clue": "Rung 5: Vanish without a _____"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "rungs": [
+      {
+        "word": "CLEAR",
+        "clue": "Rung 1 (Anchor): Crystal _____ / Out of the way"
+      },
+      {
+        "word": "CATER",
+        "clue": "Rung 2: Provide food for an event"
+      },
+      {
+        "word": "TAPER",
+        "clue": "Rung 3: Fade gradually / Barber's neckline"
+      },
+      {
+        "word": "PARTY",
+        "clue": "Rung 4: Stag or hen / Celebration"
+      },
+      {
+        "word": "PARTS",
+        "clue": "Rung 5: Spare _____ / Roles"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "rungs": [
+      {
+        "word": "CROWN",
+        "clue": "Rung 1 (Anchor): Triple _____ / Royal headpiece"
+      },
+      {
+        "word": "DROWN",
+        "clue": "Rung 2: Swallow out with noise"
+      },
+      {
+        "word": "DRAWN",
+        "clue": "Rung 3: Pulled \u2014 or sketched"
+      },
+      {
+        "word": "DRAIN",
+        "clue": "Rung 4: Down the _____ / Empty out"
+      },
+      {
+        "word": "BRAIN",
+        "clue": "Rung 5: Grey matter / Mastermind"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "rungs": [
+      {
+        "word": "THICK",
+        "clue": "Rung 1 (Anchor): Through _____ and thin"
+      },
+      {
+        "word": "PITCH",
+        "clue": "Rung 2: GAA field / Sales talk"
+      },
+      {
+        "word": "WITCH",
+        "clue": "Rung 3: Halloween broom flyer"
+      },
+      {
+        "word": "WATCH",
+        "clue": "Rung 4: Wrist timepiece / Keep an eye on"
+      },
+      {
+        "word": "CATCH",
+        "clue": "Rung 5: _____ 22 / Snag"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "rungs": [
+      {
+        "word": "STARK",
+        "clue": "Rung 1 (Anchor): Bleak and bare"
+      },
+      {
+        "word": "START",
+        "clue": "Rung 2: Jump-_____ / Begin"
+      },
+      {
+        "word": "STARE",
+        "clue": "Rung 3: Blank look / Unblinking gaze"
+      },
+      {
+        "word": "SPARE",
+        "clue": "Rung 4: Extra tyre in the boot"
+      },
+      {
+        "word": "CAPER",
+        "clue": "Rung 5: Heist \u2014 or pickled bud"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "rungs": [
+      {
+        "word": "SHIFT",
+        "clue": "Rung 1 (Anchor): Night _____ / Gear change"
+      },
+      {
+        "word": "FIGHT",
+        "clue": "Rung 2: Title bout / Scrap"
+      },
+      {
+        "word": "SIGHT",
+        "clue": "Rung 3: Out of _____ / Vision"
+      },
+      {
+        "word": "LIGHT",
+        "clue": "Rung 4: Green _____ / Weightless"
+      },
+      {
+        "word": "NIGHT",
+        "clue": "Rung 5: Late evening / Owl's shift"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "rungs": [
+      {
+        "word": "CATCH",
+        "clue": "Rung 1 (Anchor): _____ 22 / Snag"
+      },
+      {
+        "word": "CHART",
+        "clue": "Rung 2: Top 40 list / Sea map"
+      },
+      {
+        "word": "MARCH",
+        "clue": "Rung 3: Spring month / Parade step"
+      },
+      {
+        "word": "CHAIR",
+        "clue": "Rung 4: Salon seat / Boardroom head"
+      },
+      {
+        "word": "CHAIN",
+        "clue": "Rung 5: Bicycle link / Daisy _____"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "rungs": [
+      {
+        "word": "TRADE",
+        "clue": "Rung 1 (Anchor): Swap / Craft"
+      },
+      {
+        "word": "CATER",
+        "clue": "Rung 2: Provide food for an event"
+      },
+      {
+        "word": "CHEAT",
+        "clue": "Rung 3: Card shark / Cut corners"
+      },
+      {
+        "word": "MATCH",
+        "clue": "Rung 4: Game, set and _____ / Swan Vesta"
+      },
+      {
+        "word": "CATCH",
+        "clue": "Rung 5: _____ 22 / Snag"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "rungs": [
+      {
+        "word": "PLANT",
+        "clue": "Rung 1 (Anchor): Power station \u2014 or fern"
+      },
+      {
+        "word": "PAINT",
+        "clue": "Rung 2: Wet _____ / Gloss coat"
+      },
+      {
+        "word": "SAINT",
+        "clue": "Rung 3: Patron _____ / Halo wearer"
+      },
+      {
+        "word": "FAINT",
+        "clue": "Rung 4: Pass out / Dim"
+      },
+      {
+        "word": "FAITH",
+        "clue": "Rung 5: Blind _____ / Trust"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "rungs": [
+      {
+        "word": "CHEAT",
+        "clue": "Rung 1 (Anchor): Card shark / Cut corners"
+      },
+      {
+        "word": "REACT",
+        "clue": "Rung 2: Respond / Double-take"
+      },
+      {
+        "word": "TRACK",
+        "clue": "Rung 3: Sound _____ / Running lane"
+      },
+      {
+        "word": "CHART",
+        "clue": "Rung 4: Top 40 list / Sea map"
+      },
+      {
+        "word": "CHAIR",
+        "clue": "Rung 5: Salon seat / Boardroom head"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "rungs": [
+      {
+        "word": "CHEAP",
+        "clue": "Rung 1 (Anchor): Dirt _____ / Ryanair seat sale"
+      },
+      {
+        "word": "CHEAT",
+        "clue": "Rung 2: Card shark / Cut corners"
+      },
+      {
+        "word": "REACH",
+        "clue": "Rung 3: Out of _____ / Arm's length"
+      },
+      {
+        "word": "HEART",
+        "clue": "Rung 4: Change of _____ / Core"
+      },
+      {
+        "word": "WATER",
+        "clue": "Rung 5: Still or sparkling"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "rungs": [
+      {
+        "word": "SHARP",
+        "clue": "Rung 1 (Anchor): Razor-edged \u2014 or on the dot"
+      },
+      {
+        "word": "SPARE",
+        "clue": "Rung 2: Extra tyre in the boot"
+      },
+      {
+        "word": "TAPER",
+        "clue": "Rung 3: Fade gradually / Barber's neckline"
+      },
+      {
+        "word": "STARE",
+        "clue": "Rung 4: Blank look / Unblinking gaze"
+      },
+      {
+        "word": "SMART",
+        "clue": "Rung 5: Street-wise / Sharp-dressed"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "rungs": [
+      {
+        "word": "HEART",
+        "clue": "Rung 1 (Anchor): Change of _____ / Core"
+      },
+      {
+        "word": "SHARE",
+        "clue": "Rung 2: Split a secret \u2014 or a pizza"
+      },
+      {
+        "word": "REACH",
+        "clue": "Rung 3: Out of _____ / Arm's length"
+      },
+      {
+        "word": "CHEAT",
+        "clue": "Rung 4: Card shark / Cut corners"
+      },
+      {
+        "word": "PEACH",
+        "clue": "Rung 5: Stone fruit / Absolute beauty"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "rungs": [
+      {
+        "word": "WATER",
+        "clue": "Rung 1 (Anchor): Still or sparkling"
+      },
+      {
+        "word": "REACT",
+        "clue": "Rung 2: Respond / Double-take"
+      },
+      {
+        "word": "CLEAR",
+        "clue": "Rung 3: Crystal _____ / Out of the way"
+      },
+      {
+        "word": "GRACE",
+        "clue": "Rung 4: Saving _____ / Elegance"
+      },
+      {
+        "word": "CRANE",
+        "clue": "Rung 5: Dublin skyline lifting machine"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "rungs": [
+      {
+        "word": "CLEAN",
+        "clue": "Rung 1 (Anchor): Squeaky _____ / Spotless"
+      },
+      {
+        "word": "CRANE",
+        "clue": "Rung 2: Dublin skyline lifting machine"
+      },
+      {
+        "word": "TRACE",
+        "clue": "Rung 3: Vanish without a _____"
+      },
+      {
+        "word": "CLEAR",
+        "clue": "Rung 4: Crystal _____ / Out of the way"
+      },
+      {
+        "word": "CLEAT",
+        "clue": "Rung 5: Football boot stud"
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "rungs": [
+      {
+        "word": "CLEAR",
+        "clue": "Rung 1 (Anchor): Crystal _____ / Out of the way"
+      },
+      {
+        "word": "CRATE",
+        "clue": "Rung 2: Wooden packing box"
+      },
+      {
+        "word": "WATER",
+        "clue": "Rung 3: Still or sparkling"
+      },
+      {
+        "word": "GREAT",
+        "clue": "Rung 4: Top-notch / Alexander the _____"
+      },
+      {
+        "word": "STARE",
+        "clue": "Rung 5: Blank look / Unblinking gaze"
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "rungs": [
+      {
+        "word": "CLOWN",
+        "clue": "Rung 1 (Anchor): Class _____ / Circus jester"
+      },
+      {
+        "word": "CROWN",
+        "clue": "Rung 2: Triple _____ / Royal headpiece"
+      },
+      {
+        "word": "DROWN",
+        "clue": "Rung 3: Swallow out with noise"
+      },
+      {
+        "word": "DRAWN",
+        "clue": "Rung 4: Pulled \u2014 or sketched"
+      },
+      {
+        "word": "DRAIN",
+        "clue": "Rung 5: Down the _____ / Empty out"
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "rungs": [
+      {
+        "word": "STONE",
+        "clue": "Rung 1 (Anchor): Blarney rock / 14 pounds"
+      },
+      {
+        "word": "NOISE",
+        "clue": "Rung 2: White _____ / Racket"
+      },
+      {
+        "word": "SHONE",
+        "clue": "Rung 3: Glowed brightly"
+      },
+      {
+        "word": "SNORE",
+        "clue": "Rung 4: Saw logs at night"
+      },
+      {
+        "word": "SNORT",
+        "clue": "Rung 5: Derisive laugh through the nose"
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "rungs": [
+      {
+        "word": "TIGER",
+        "clue": "Rung 1 (Anchor): Celtic _____ / Striped cat"
+      },
+      {
+        "word": "GREAT",
+        "clue": "Rung 2: Top-notch / Alexander the _____"
+      },
+      {
+        "word": "HEART",
+        "clue": "Rung 3: Change of _____ / Core"
+      },
+      {
+        "word": "LATER",
+        "clue": "Rung 4: See you _____ / Afterwards"
+      },
+      {
+        "word": "TREAD",
+        "clue": "Rung 5: Tyre grip / Walk softly"
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "rungs": [
+      {
+        "word": "MATCH",
+        "clue": "Rung 1 (Anchor): Game, set and _____ / Swan Vesta"
+      },
+      {
+        "word": "CHART",
+        "clue": "Rung 2: Top 40 list / Sea map"
+      },
+      {
+        "word": "CRATE",
+        "clue": "Rung 3: Wooden packing box"
+      },
+      {
+        "word": "CRANE",
+        "clue": "Rung 4: Dublin skyline lifting machine"
+      },
+      {
+        "word": "CLEAR",
+        "clue": "Rung 5: Crystal _____ / Out of the way"
+      }
+    ]
+  }
+];
+/* VAULTS_END */
+
+let currentVault = null, solved = [], inputs = [], activeRung = 1, solveOrder = [], mistakes = 0, isFinished = false, isLockedOut = false;
+let wrongRungIdx = null, justSolvedRungIdx = null, inputFrozen = false;
+
+function launchConfetti() {
+  const colors = ['#facc15', '#22c55e', '#38bdf8', '#f472b6', '#ffffff'];
+  for (let i = 0; i < 55; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDuration = (1.2 + Math.random() * 1.1) + 's';
+    el.style.animationDelay = (Math.random() * 0.25) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2600);
+  }
+}
+const selectEl = document.getElementById("puzzleSelect");
+const STATE_KEY = "the_vault_oneshot_state_v1";
+
+function getAllState() {
+  try { return JSON.parse(localStorage.getItem(STATE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+
+function saveVaultState() {
+  const all = getAllState();
+  all[currentVault.id] = {
+    solved, inputs, activeRung, solveOrder, mistakes, isFinished, isLockedOut,
+    pts: calcPoints(mistakes, isLockedOut)
+  };
+  localStorage.setItem(STATE_KEY, JSON.stringify(all));
+}
+
+function calcPoints(m, locked) {
+  if (locked || m > 2) return 0;
+  if (m === 0) return 100;
+  if (m === 1) return 70;
+  return 40;
+}
+
+function updateHeaderBank() {
+  const all = getAllState();
+  const done = Object.values(all).filter(s => s.isFinished);
+  const total = done.reduce((acc, s) => acc + s.pts, 0);
+  document.getElementById("totalScoreDisplay").textContent = `🏆 Total Score: ${total} pts (${done.length}/${VAULTS.length} played)`;
+}
+
+function initDropdown() {
+  selectEl.innerHTML = "";
+  const all = getAllState();
+  VAULTS.forEach((v, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx;
+    const s = all[v.id];
+    const tag = s && s.isFinished ? (s.isLockedOut ? " (🔒 0 pts)" : ` (🔓 ${s.pts} pts)`) : (s && s.mistakes > 0 ? ` (${s.mistakes}/2 alarms)` : "");
+    opt.textContent = `Vault #${v.id}${tag}`;
+    selectEl.appendChild(opt);
+  });
+  selectEl.onchange = e => loadVault(parseInt(e.target.value));
+}
+
+function loadVault(idx) {
+  currentVault = VAULTS[idx];
+  const saved = getAllState()[currentVault.id];
+  wrongRungIdx = null;
+  justSolvedRungIdx = null;
+  inputFrozen = false;
+  if (saved) {
+    solved = [...saved.solved];
+    inputs = [...saved.inputs];
+    activeRung = saved.activeRung;
+    solveOrder = [...saved.solveOrder];
+    mistakes = saved.mistakes || 0;
+    isFinished = saved.isFinished || false;
+    isLockedOut = saved.isLockedOut || false;
+  } else {
+    solved = [true, false, false, false, false];
+    inputs = [currentVault.rungs[0].word, "", "", "", ""];
+    activeRung = 1;
+    solveOrder = [1];
+    mistakes = 0;
+    isFinished = false;
+    isLockedOut = false;
+  }
+  updateHeaderBank();
+  render();
+}
+
+function goNextVault() {
+  const nextIdx = (parseInt(selectEl.value) + 1) % VAULTS.length;
+  selectEl.value = nextIdx;
+  loadVault(nextIdx);
+}
+
+function selectRung(idx) {
+  if (isFinished || inputFrozen || solved[idx]) return;
+  activeRung = idx;
+  render();
+}
+
+function onKey(k) {
+  if (isFinished || inputFrozen) return;
+  let cur = inputs[activeRung];
+  if (k === "BACK") inputs[activeRung] = cur.slice(0, -1);
+  else if (k === "ENTER") { checkRung(); return; }
+  else if (/^[A-Z]$/.test(k) && cur.length < 5) inputs[activeRung] += k;
+  render();
+}
+
+function checkRung() {
+  const guess = inputs[activeRung];
+  if (guess.length < 5) return;
+  const target = currentVault.rungs[activeRung].word;
+
+  if (guess === target) {
+    const crackedIdx = activeRung;
+    solved[crackedIdx] = true;
+    justSolvedRungIdx = crackedIdx;
+    solveOrder.push(crackedIdx + 1);
+    const nextUnsolved = solved.findIndex(s => !s);
+    if (nextUnsolved !== -1) {
+      activeRung = nextUnsolved;
+    } else {
+      isFinished = true;
+      launchConfetti();
+    }
+    saveVaultState();
+    const curIdx = parseInt(selectEl.value);
+    initDropdown(); selectEl.value = curIdx;
+    updateHeaderBank();
+    render();
+    setTimeout(() => {
+      if (justSolvedRungIdx === crackedIdx) {
+        justSolvedRungIdx = null;
+        render();
+      }
+    }, 950);
+  } else {
+    // WRONG ANSWER: Trigger Red Shake + Alarm + 2-Second Wipe!
+    mistakes++;
+    wrongRungIdx = activeRung;
+    inputFrozen = true;
+    if (mistakes > 2) {
+      isLockedOut = true;
+      isFinished = true;
+    }
+    saveVaultState();
+    const curIdx = parseInt(selectEl.value);
+    initDropdown(); selectEl.value = curIdx;
+    updateHeaderBank();
+    render();
+
+    setTimeout(() => {
+      if (!isLockedOut) {
+        inputs[wrongRungIdx] = "";
+      }
+      wrongRungIdx = null;
+      inputFrozen = false;
+      saveVaultState();
+      render();
+    }, 2000);
+  }
+}
+
+function render() {
+  // Update Scoreboard
+  const crackedCount = solved.filter(Boolean).length;
+  document.getElementById("crackedVal").textContent = `${crackedCount}/5`;
+  document.getElementById("mistakesVal").textContent = `${Math.min(mistakes, 3)}/2`;
+
+  const alarmCard = document.getElementById("alarmCard");
+  if (mistakes === 0) alarmCard.className = "stat-card alarm-safe";
+  else if (mistakes === 1) alarmCard.className = "stat-card alarm-warn";
+  else alarmCard.className = "stat-card alarm-crit";
+
+  const pts = calcPoints(mistakes, isLockedOut);
+  const scoreEl = document.getElementById("scoreVal");
+  scoreEl.textContent = pts;
+  scoreEl.className = "stat-val " + (pts === 100 ? "pts-high" : pts >= 40 ? "pts-mid" : "pts-low");
+
+  // Render Ladder
+  const ladderEl = document.getElementById("ladder");
+  ladderEl.innerHTML = "";
+  currentVault.rungs.forEach((r, idx) => {
+    const div = document.createElement("div");
+    let cls = "rung";
+    if (idx === wrongRungIdx) cls += " wrong-shake";
+    else if (solved[idx]) cls += " solved" + (idx === justSolvedRungIdx ? " just-solved" : "");
+    else if (isLockedOut) cls += " failed-reveal";
+    else if (idx === activeRung) cls += " active";
+    div.className = cls;
+    div.onclick = () => selectRung(idx);
+
+    let badgeTxt = solved[idx] ? (idx === justSolvedRungIdx ? "✨ CRACKED!" : "UNLOCKED") : (idx === wrongRungIdx ? "🚨 WRONG — WIPING..." : (isLockedOut ? "LOCKED OUT" : "TAP TO SOLVE"));
+    div.innerHTML = `<div class="rung-header"><span>${r.clue}</span><span class="rung-badge">${badgeTxt}</span></div>`;
+
+    const tilesDiv = document.createElement("div");
+    tilesDiv.className = "tiles";
+    const str = (solved[idx] || isLockedOut) ? r.word : inputs[idx];
+    for (let i = 0; i < 5; i++) {
+      const t = document.createElement("div");
+      t.className = "tile";
+      t.textContent = str[i] || "";
+      tilesDiv.appendChild(t);
+    }
+    div.appendChild(tilesDiv);
+    ladderEl.appendChild(div);
+  });
+
+  // Modal check
+  const modal = document.getElementById("winModal");
+  if (isFinished && !inputFrozen) {
+    modal.className = "modal active" + (isLockedOut ? " locked-out" : "");
+    const emojis = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"];
+    const path = solveOrder.map(n => emojis[n-1]).join(" ➔ ");
+    if (isLockedOut) {
+      document.getElementById("modalTitle").textContent = "🚨 VAULT LOCKED DOWN (0 PTS)";
+      document.getElementById("modalSub").textContent = "3 Alarms Tripped — Security Lockdown!";
+      document.getElementById("modalPath").textContent = `Cracked before lockout: ${path}`;
+    } else {
+      document.getElementById("modalTitle").textContent = `🔓 ${pts} POINTS LOCKED!`;
+      document.getElementById("modalSub").textContent = mistakes === 0 ? "Flawless Heist (0 Mistakes!)" : `Cracked with ${mistakes}/2 Alarms Tripped`;
+      document.getElementById("modalPath").textContent = `Solve Order: ${path}`;
+    }
+  } else {
+    modal.className = "modal";
+  }
+
+  // Render Keyboard
+  const neighborLetters = new Set();
+  if (!isFinished) {
+    if (activeRung > 0 && solved[activeRung - 1]) currentVault.rungs[activeRung - 1].word.split("").forEach(c => neighborLetters.add(c));
+    if (activeRung < 4 && solved[activeRung + 1]) currentVault.rungs[activeRung + 1].word.split("").forEach(c => neighborLetters.add(c));
+  }
+  const kbEl = document.getElementById("keyboard");
+  kbEl.innerHTML = "";
+  [
+    ["Q","W","E","R","T","Y","U","I","O","P"],
+    ["A","S","D","F","G","H","J","K","L"],
+    ["ENTER","Z","X","C","V","B","N","M","BACK"]
+  ].forEach(r => {
+    const rDiv = document.createElement("div"); rDiv.className = "kb-row";
+    r.forEach(k => {
+      const btn = document.createElement("button");
+      btn.className = "key" + (k.length > 1 ? " wide" : "") + (neighborLetters.has(k) ? " neighbor-hint" : "");
+      btn.textContent = k === "BACK" ? "⌫" : k;
+      btn.onclick = () => onKey(k);
+      rDiv.appendChild(btn);
+    });
+    kbEl.appendChild(rDiv);
+  });
+}
+
+window.addEventListener("keydown", e => {
+  if (e.key === "Backspace") onKey("BACK");
+  else if (e.key === "Enter") onKey("ENTER");
+  else if (/^[a-zA-Z]$/.test(e.key)) onKey(e.key.toUpperCase());
+});
+
+function shareResult() {
+  const emojis = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"];
+  const path = solveOrder.map(n => emojis[n-1]).join(" ➔ ");
+  const pts = calcPoints(mistakes, isLockedOut);
+  const status = isLockedOut ? "🚨 LOCKED OUT (0 PTS)" : `🔓 ${pts} PTS (${mistakes}/2 Alarms)`;
+  const text = `THE VAULT #${currentVault.id} — ${status}\nSolve Order: ${path}`;
+  navigator.clipboard.writeText(text);
+  alert("Copied to clipboard!\n\n" + text);
+}
+
+initDropdown();
+if (VAULTS.length) loadVault(0);
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'inline-block';
+});
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+    });
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SWAP / CROSS — Daily Lab</title>
+<style>
+  :root {
+    --bg: #121213; --panel: #1e1e20; --green: #538d4e;
+    --yellow: #b59f3b; --grey: #3a3a3c; --text: #ffffff;
+    --accent: #38bdf8; --gold: #facc15; --danger: #f87171;
+  }
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 14px; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+  }
+  .nav-tabs {
+    display: flex; gap: 6px; width: 100%; max-width: 420px; margin-bottom: 12px;
+    background: var(--panel); padding: 6px; border-radius: 10px;
+  }
+  .nav-tabs a {
+    flex: 1; text-align: center; padding: 8px 0; border-radius: 6px;
+    color: #a1a1aa; text-decoration: none; font-weight: 700; font-size: 0.92rem; color: #e4e4e7;
+  }
+  .nav-tabs a.active { background: #2e2e32; color: var(--accent); }
+  header {
+    width: 100%; max-width: 420px; display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid #2e2e30; padding-bottom: 10px; margin-bottom: 12px;
+  }
+  .title-wrap { display: flex; flex-direction: column; }
+  h1 { font-size: 1.15rem; letter-spacing: 2px; margin: 0; }
+  .bank-score { font-size: 0.8rem; color: var(--gold); font-weight: 700; margin-top: 2px; }
+  select, button {
+    background: var(--panel); color: var(--text); border: 1px solid #3a3a3c;
+    border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer;
+  }
+  .scoreboard {
+    width: 100%; max-width: 420px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--panel); border: 2px solid #2e2e32;
+    border-radius: 10px; padding: 10px 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .stat-card.swaps-green { border-color: var(--green); background: rgba(83, 141, 78, 0.12); }
+  .stat-card.swaps-green .stat-val { color: #6ee7b7; }
+  .stat-card.swaps-orange { border-color: #f97316; background: rgba(249, 115, 22, 0.12); }
+  .stat-card.swaps-orange .stat-val { color: #fb923c; }
+  .stat-card.swaps-red { border-color: #ef4444; background: rgba(239, 68, 68, 0.12); }
+  .stat-card.swaps-red .stat-val { color: #f87171; }
+  .stat-card.par-card { border-color: rgba(250, 204, 21, 0.45); background: rgba(250, 204, 21, 0.06); }
+  .stat-card.pts-card { border-color: rgba(56, 189, 248, 0.45); }
+  .stat-label {
+    font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;
+    color: #e4e4e7; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .stat-val { font-size: 1.75rem; font-weight: 900; line-height: 1; }
+  .par-val { color: var(--gold); }
+  .pts-high { color: var(--gold); }
+  .pts-mid { color: var(--accent); }
+  .pts-low { color: var(--danger); }
+  .board {
+    display: grid; grid-template-columns: repeat(5, 62px);
+    grid-template-rows: repeat(5, 62px); gap: 8px; margin-bottom: 18px;
+  }
+  .tile {
+    width: 62px; height: 62px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: 1.7rem;
+    font-weight: 800; cursor: pointer;
+    transition: transform 0.12s ease, background-color 0.2s ease;
+  }
+  .empty { visibility: hidden; pointer-events: none; }
+  .green { background: var(--green); cursor: default; }
+  .yellow { background: var(--yellow); }
+  .grey { background: var(--grey); }
+  .selected { outline: 3px solid var(--accent); transform: scale(1.08); z-index: 2; }
+  .legend {
+    max-width: 420px; width: 100%; font-size: 0.96rem; color: #f4f4f5;
+    background: var(--panel); border: 1px solid #3f3f46;
+    padding: 14px 16px; border-radius: 10px; line-height: 1.65;
+  }
+  .under-par-highlight {
+    display: inline-block; margin-top: 8px; padding: 5px 10px;
+    background: rgba(250, 204, 21, 0.15); border: 1px solid var(--gold);
+    color: var(--gold); border-radius: 6px; font-weight: 800; font-size: 0.95rem;
+  }
+  .modal {
+    display: none; flex-direction: column; align-items: center;
+    background: var(--panel); border: 2px solid var(--gold); padding: 18px;
+    border-radius: 12px; width: 100%; max-width: 420px; text-align: center; margin-bottom: 16px;
+  }
+  .modal.active { display: flex; }
+  .modal-btns { display: flex; gap: 10px; margin-top: 12px; }
+  .share-btn { background: var(--green); border: none; font-weight: 700; padding: 10px 16px; color:#fff; }
+  .next-btn { background: var(--accent); border: none; font-weight: 700; padding: 10px 16px; color:#000; }
+
+  body {
+    background: radial-gradient(circle at 50% 18%, #3b4c66 0%, #1e293b 55%, #0f172a 100%) !important;
+    background-attachment: fixed !important;
+  }
+  .nav-tabs {
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  }
+  .nav-tabs a.active {
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 0 #0369a1, 0 4px 10px rgba(0,0,0,0.3) !important;
+  }
+  .stat-card, .legend, .sub-rule, .clues-box, .modal {
+    background: linear-gradient(180deg, rgba(45, 58, 79, 0.92) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    box-shadow: 0 6px 0 #0f172a, 0 10px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18) !important;
+  }
+  .tile, .cell {
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 6px 0 #0f172a, 0 8px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.45) !important;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease !important;
+  }
+  .tile:active, .key:active, button:active {
+    transform: translateY(4px) !important;
+    box-shadow: 0 2px 0 #0f172a, 0 3px 6px rgba(0,0,0,0.3) !important;
+  }
+  .tile.green, .cell.green, .rung.solved .tile, .key.green {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%) !important;
+    border-color: #4ade80 !important;
+    box-shadow: 0 6px 0 #14532d, 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+  }
+  .tile.yellow, .cell.yellow, .key.yellow, .key.neighbor-hint {
+    background: linear-gradient(180deg, #eab308 0%, #b45309 100%) !important;
+    border-color: #fde047 !important;
+    box-shadow: 0 6px 0 #78350f, 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+  }
+  .tile.grey, .cell.grey {
+    background: linear-gradient(180deg, #475569 0%, #334155 100%) !important;
+    border-color: #64748b !important;
+    box-shadow: 0 6px 0 #1e293b, 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+  }
+  .rung {
+    background: linear-gradient(180deg, rgba(45, 58, 79, 0.9) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+    box-shadow: 0 6px 0 #0f172a, 0 10px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+  }
+  .key {
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 0 #1e293b, 0 5px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  }
+  .key.grey {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #64748b !important;
+    box-shadow: 0 3px 0 #090d16 !important;
+  }
+  select, button {
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 0 #0f172a !important;
+    font-weight: 700 !important;
+  }
+
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e293b">
+<link rel="apple-touch-icon" href="icon.svg">
+</head>
+<body>
+
+<nav class="nav-tabs">
+  <a href="index.html" class="active">1. SWAP / CROSS</a>
+  <a href="bridge.html">2. BRIDGE</a>
+  <a href="vault.html">3. THE VAULT</a>
+</nav>
+
+<header>
+  <div class="title-wrap">
+    <h1>SWAP / CROSS</h1>
+    <div class="bank-score" id="totalScoreDisplay">🏆 Total Score: 0 pts</div>
+  </div>
+  <div>
+    <button id="installAppBtn" onclick="triggerInstall()" style="display:none; margin-right:6px; background:linear-gradient(180deg,#22c55e,#15803d)!important; border-color:#4ade80!important;">📲 Install App</button><select id="puzzleSelect"></select>
+  </div>
+</header>
+
+<div class="scoreboard">
+  <div class="stat-card swaps-green" id="swapsCard">
+    <div class="stat-label">SWAPS USED</div>
+    <div class="stat-val" id="swapsUsedVal">0</div>
+  </div>
+  <div class="stat-card par-card">
+    <div class="stat-label">🎯 GOLD PAR</div>
+    <div class="stat-val par-val" id="parCountVal">6</div>
+  </div>
+  <div class="stat-card pts-card">
+    <div class="stat-label">SCORE</div>
+    <div class="stat-val pts-high" id="livePtsVal">100</div>
+  </div>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="modal" id="winModal">
+  <h2 id="modalTitle" style="margin:0 0 6px 0;"></h2>
+  <p id="modalSub" style="margin:0 0 6px 0; font-size:0.95rem; color:#ffffff; font-weight:700;"></p>
+  <p id="modalWords" style="margin:0; font-size:0.85rem; color:#a1a1aa;"></p>
+  <div class="modal-btns">
+    <button class="share-btn" onclick="shareResult()">Share Score</button>
+    <button class="next-btn" onclick="goNextPuzzle()">Next Puzzle ➔</button>
+  </div>
+</div>
+
+<div class="legend">
+  <strong>ONE SHOT PER BOARD:</strong> Untangle all 3 words in <strong>6 Swaps (Gold Par = 100 pts)</strong>.<br>
+  <strong>SCORING:</strong> Par = 100 &bull; +1 = 80 &bull; +2 = 60 &bull; +3 = 40 &bull; +4 = 20 &bull; +5+ = 5 pts<br>
+  <span class="under-par-highlight">🔥 UNDER PAR BONUS: +20 PTS for every swap under Par!</span>
+</div>
+
+<script>
+/* PUZZLES_START */
+const PUZZLES = [
+  {
+    "id": 1,
+    "top": "BLADE",
+    "spine": "APPLE",
+    "bottom": "CLEAN",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "A",
+      "E",
+      "A",
+      "P",
+      "D",
+      "L",
+      "B",
+      "N",
+      "C",
+      "P",
+      "E",
+      "L",
+      "L"
+    ]
+  },
+  {
+    "id": 2,
+    "top": "DRAIN",
+    "spine": "ANGER",
+    "bottom": "WORLD",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "D",
+      "A",
+      "N",
+      "G",
+      "D",
+      "E",
+      "L",
+      "W",
+      "I",
+      "R",
+      "R",
+      "O"
+    ]
+  },
+  {
+    "id": 3,
+    "top": "CRATE",
+    "spine": "ANGEL",
+    "bottom": "ATLAS",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "S",
+      "E",
+      "A",
+      "N",
+      "A",
+      "G",
+      "T",
+      "C",
+      "A",
+      "E",
+      "L",
+      "T",
+      "R"
+    ]
+  },
+  {
+    "id": 4,
+    "top": "BRUSH",
+    "spine": "ULTRA",
+    "bottom": "APART",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "L",
+      "B",
+      "U",
+      "T",
+      "R",
+      "T",
+      "P",
+      "H",
+      "A",
+      "R",
+      "A",
+      "S",
+      "R"
+    ]
+  },
+  {
+    "id": 5,
+    "top": "BRAND",
+    "spine": "ARENA",
+    "bottom": "CRASH",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "S",
+      "N",
+      "A",
+      "B",
+      "H",
+      "N",
+      "R",
+      "E",
+      "C",
+      "D",
+      "A",
+      "R",
+      "R"
+    ]
+  },
+  {
+    "id": 6,
+    "top": "CHARM",
+    "spine": "AROMA",
+    "bottom": "TRAIT",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "H",
+      "C",
+      "A",
+      "T",
+      "R",
+      "O",
+      "R",
+      "R",
+      "T",
+      "I",
+      "A",
+      "M",
+      "M"
+    ]
+  },
+  {
+    "id": 7,
+    "top": "AISLE",
+    "spine": "STARE",
+    "bottom": "WHEEL",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "L",
+      "A",
+      "S",
+      "E",
+      "L",
+      "H",
+      "E",
+      "T",
+      "W",
+      "I",
+      "E",
+      "A",
+      "R"
+    ]
+  },
+  {
+    "id": 8,
+    "top": "COUNT",
+    "spine": "ULTRA",
+    "bottom": "DIARY",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "T",
+      "N",
+      "U",
+      "C",
+      "O",
+      "T",
+      "Y",
+      "I",
+      "D",
+      "R",
+      "A",
+      "L",
+      "R"
+    ]
+  },
+  {
+    "id": 9,
+    "top": "TRASH",
+    "spine": "AROMA",
+    "bottom": "USAGE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "S",
+      "S",
+      "A",
+      "M",
+      "R",
+      "O",
+      "R",
+      "E",
+      "U",
+      "G",
+      "A",
+      "T",
+      "H"
+    ]
+  },
+  {
+    "id": 10,
+    "top": "CRATE",
+    "spine": "AUDIT",
+    "bottom": "WITCH",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "D",
+      "T",
+      "A",
+      "I",
+      "R",
+      "C",
+      "E",
+      "U",
+      "W",
+      "C",
+      "T",
+      "H",
+      "I"
+    ]
+  },
+  {
+    "id": 11,
+    "top": "CRUSH",
+    "spine": "UNDER",
+    "bottom": "EARTH",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "S",
+      "N",
+      "U",
+      "A",
+      "D",
+      "R",
+      "T",
+      "H",
+      "E",
+      "C",
+      "R",
+      "H",
+      "E"
+    ]
+  },
+  {
+    "id": 12,
+    "top": "CLAIM",
+    "spine": "AUDIO",
+    "bottom": "BROKE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "K",
+      "A",
+      "D",
+      "I",
+      "I",
+      "C",
+      "R",
+      "B",
+      "U",
+      "O",
+      "L",
+      "M"
+    ]
+  },
+  {
+    "id": 13,
+    "top": "VITAL",
+    "spine": "TIGER",
+    "bottom": "VIRUS",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "S",
+      "A",
+      "T",
+      "U",
+      "I",
+      "V",
+      "I",
+      "L",
+      "V",
+      "G",
+      "R",
+      "I",
+      "E"
+    ]
+  },
+  {
+    "id": 14,
+    "top": "VITAL",
+    "spine": "TRIBE",
+    "bottom": "TREND",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "A",
+      "R",
+      "T",
+      "I",
+      "N",
+      "D",
+      "V",
+      "R",
+      "T",
+      "L",
+      "E",
+      "B",
+      "I"
+    ]
+  },
+  {
+    "id": 15,
+    "top": "WIDOW",
+    "spine": "DINER",
+    "bottom": "CARGO",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "O",
+      "O",
+      "D",
+      "I",
+      "I",
+      "W",
+      "A",
+      "G",
+      "C",
+      "N",
+      "R",
+      "E",
+      "W"
+    ]
+  },
+  {
+    "id": 16,
+    "top": "WEAVE",
+    "spine": "ARENA",
+    "bottom": "WHALE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "H",
+      "A",
+      "E",
+      "R",
+      "W",
+      "N",
+      "V",
+      "W",
+      "E",
+      "A",
+      "E",
+      "L"
+    ]
+  },
+  {
+    "id": 17,
+    "top": "CRAVE",
+    "spine": "AUDIO",
+    "bottom": "CLOAK",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "K",
+      "D",
+      "A",
+      "E",
+      "A",
+      "C",
+      "I",
+      "L",
+      "C",
+      "R",
+      "O",
+      "U",
+      "V"
+    ]
+  },
+  {
+    "id": 18,
+    "top": "TOWER",
+    "spine": "WATER",
+    "bottom": "WORST",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "T",
+      "W",
+      "A",
+      "T",
+      "O",
+      "R",
+      "T",
+      "W",
+      "E",
+      "R",
+      "O",
+      "S"
+    ]
+  },
+  {
+    "id": 19,
+    "top": "SHARE",
+    "spine": "AROMA",
+    "bottom": "DRAFT",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "R",
+      "A",
+      "O",
+      "T",
+      "H",
+      "S",
+      "F",
+      "D",
+      "M",
+      "A",
+      "R",
+      "R"
+    ]
+  },
+  {
+    "id": 20,
+    "top": "DRUNK",
+    "spine": "UNITE",
+    "bottom": "TREAD",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "N",
+      "U",
+      "A",
+      "D",
+      "I",
+      "T",
+      "D",
+      "T",
+      "K",
+      "E",
+      "R",
+      "R"
+    ]
+  },
+  {
+    "id": 21,
+    "top": "CRATE",
+    "spine": "ARGUE",
+    "bottom": "TREAT",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "T",
+      "U",
+      "A",
+      "R",
+      "R",
+      "C",
+      "R",
+      "A",
+      "T",
+      "G",
+      "E",
+      "T",
+      "E"
+    ]
+  },
+  {
+    "id": 22,
+    "top": "AWAKE",
+    "spine": "ARMOR",
+    "bottom": "WORST",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "K",
+      "E",
+      "A",
+      "O",
+      "M",
+      "S",
+      "W",
+      "R",
+      "W",
+      "A",
+      "R",
+      "T",
+      "O"
+    ]
+  },
+  {
+    "id": 23,
+    "top": "TRACK",
+    "spine": "AROMA",
+    "bottom": "SLATE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "M",
+      "E",
+      "A",
+      "T",
+      "L",
+      "O",
+      "R",
+      "C",
+      "S",
+      "T",
+      "A",
+      "K",
+      "R"
+    ]
+  },
+  {
+    "id": 24,
+    "top": "BRAVE",
+    "spine": "ARENA",
+    "bottom": "BRAIN",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "I",
+      "A",
+      "E",
+      "B",
+      "E",
+      "R",
+      "V",
+      "B",
+      "N",
+      "A",
+      "R",
+      "R"
+    ]
+  },
+  {
+    "id": 25,
+    "top": "TRUNK",
+    "spine": "ULTRA",
+    "bottom": "ALARM",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "M",
+      "U",
+      "R",
+      "T",
+      "R",
+      "R",
+      "L",
+      "A",
+      "T",
+      "A",
+      "L",
+      "K"
+    ]
+  },
+  {
+    "id": 26,
+    "top": "COACH",
+    "spine": "AUDIO",
+    "bottom": "CHORD",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "D",
+      "H",
+      "A",
+      "R",
+      "D",
+      "I",
+      "O",
+      "U",
+      "C",
+      "C",
+      "O",
+      "H",
+      "C"
+    ]
+  },
+  {
+    "id": 27,
+    "top": "COACH",
+    "spine": "ANGEL",
+    "bottom": "VALVE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "O",
+      "E",
+      "A",
+      "N",
+      "A",
+      "V",
+      "C",
+      "C",
+      "V",
+      "G",
+      "L",
+      "E",
+      "H"
+    ]
+  },
+  {
+    "id": 28,
+    "top": "AWARE",
+    "spine": "ARENA",
+    "bottom": "DRAWN",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "R",
+      "N",
+      "A",
+      "A",
+      "R",
+      "W",
+      "N",
+      "W",
+      "D",
+      "E",
+      "A",
+      "E",
+      "R"
+    ]
+  },
+  {
+    "id": 29,
+    "top": "VAULT",
+    "spine": "UNITE",
+    "bottom": "BLEND",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "N",
+      "U",
+      "T",
+      "V",
+      "D",
+      "L",
+      "L",
+      "B",
+      "I",
+      "E",
+      "A",
+      "T"
+    ]
+  },
+  {
+    "id": 30,
+    "top": "WIDOW",
+    "spine": "DELTA",
+    "bottom": "BOARD",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "T",
+      "W",
+      "D",
+      "E",
+      "O",
+      "R",
+      "D",
+      "L",
+      "B",
+      "W",
+      "A",
+      "O",
+      "I"
+    ]
+  },
+  {
+    "id": 31,
+    "top": "SMART",
+    "spine": "AUDIO",
+    "bottom": "CHORE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "R",
+      "E",
+      "A",
+      "T",
+      "U",
+      "D",
+      "M",
+      "H",
+      "C",
+      "I",
+      "O",
+      "S",
+      "R"
+    ]
+  },
+  {
+    "id": 32,
+    "top": "TOUCH",
+    "spine": "UPSET",
+    "bottom": "CATCH",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "C",
+      "S",
+      "U",
+      "H",
+      "C",
+      "A",
+      "O",
+      "H",
+      "C",
+      "P",
+      "T",
+      "E",
+      "T"
+    ]
+  },
+  {
+    "id": 33,
+    "top": "PITCH",
+    "spine": "TRACE",
+    "bottom": "CREEK",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "K",
+      "R",
+      "T",
+      "P",
+      "C",
+      "E",
+      "H",
+      "A",
+      "C",
+      "C",
+      "E",
+      "R",
+      "I"
+    ]
+  },
+  {
+    "id": 34,
+    "top": "DECAY",
+    "spine": "CHINA",
+    "bottom": "DRAIN",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "Y",
+      "C",
+      "I",
+      "D",
+      "I",
+      "A",
+      "R",
+      "D",
+      "H",
+      "A",
+      "N",
+      "E"
+    ]
+  },
+  {
+    "id": 35,
+    "top": "SLATE",
+    "spine": "ANGEL",
+    "bottom": "DELTA",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "A",
+      "E",
+      "A",
+      "E",
+      "S",
+      "T",
+      "N",
+      "G",
+      "D",
+      "T",
+      "L",
+      "L",
+      "E"
+    ]
+  },
+  {
+    "id": 36,
+    "top": "TRADE",
+    "spine": "ALONG",
+    "bottom": "ANGLE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "N",
+      "L",
+      "A",
+      "N",
+      "T",
+      "O",
+      "L",
+      "E",
+      "A",
+      "R",
+      "G",
+      "E",
+      "D"
+    ]
+  },
+  {
+    "id": 37,
+    "top": "DIVER",
+    "spine": "VINYL",
+    "bottom": "ATLAS",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "R",
+      "S",
+      "V",
+      "Y",
+      "D",
+      "N",
+      "I",
+      "T",
+      "A",
+      "I",
+      "L",
+      "E",
+      "A"
+    ]
+  },
+  {
+    "id": 38,
+    "top": "WRATH",
+    "spine": "AUDIO",
+    "bottom": "CLOCK",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "U",
+      "K",
+      "A",
+      "D",
+      "L",
+      "I",
+      "H",
+      "W",
+      "C",
+      "C",
+      "O",
+      "R",
+      "T"
+    ]
+  },
+  {
+    "id": 39,
+    "top": "VIDEO",
+    "spine": "DELTA",
+    "bottom": "TOAST",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "I",
+      "T",
+      "D",
+      "O",
+      "E",
+      "T",
+      "V",
+      "S",
+      "T",
+      "L",
+      "A",
+      "O",
+      "E"
+    ]
+  },
+  {
+    "id": 40,
+    "top": "DOUBT",
+    "spine": "ULTRA",
+    "bottom": "SLATE",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "T",
+      "T",
+      "U",
+      "E",
+      "O",
+      "D",
+      "R",
+      "B",
+      "S",
+      "T",
+      "A",
+      "L",
+      "L"
+    ]
+  },
+  {
+    "id": 41,
+    "top": "AWARD",
+    "spine": "ARENA",
+    "bottom": "DEATH",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "A",
+      "A",
+      "D",
+      "T",
+      "N",
+      "W",
+      "H",
+      "D",
+      "R",
+      "A",
+      "E",
+      "R"
+    ]
+  },
+  {
+    "id": 42,
+    "top": "WITCH",
+    "spine": "TRAIL",
+    "bottom": "VILLA",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "A",
+      "C",
+      "T",
+      "W",
+      "I",
+      "I",
+      "L",
+      "H",
+      "V",
+      "A",
+      "L",
+      "R",
+      "I"
+    ]
+  },
+  {
+    "id": 43,
+    "top": "CLASS",
+    "spine": "ASSET",
+    "bottom": "WATCH",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "S",
+      "A",
+      "C",
+      "L",
+      "A",
+      "H",
+      "S",
+      "W",
+      "S",
+      "T",
+      "S",
+      "C"
+    ]
+  },
+  {
+    "id": 44,
+    "top": "VIVID",
+    "spine": "VILLA",
+    "bottom": "CRAZY",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "L",
+      "L",
+      "V",
+      "V",
+      "Y",
+      "R",
+      "I",
+      "Z",
+      "C",
+      "I",
+      "A",
+      "D",
+      "I"
+    ]
+  },
+  {
+    "id": 45,
+    "top": "BRAKE",
+    "spine": "ALERT",
+    "bottom": "WATER",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "E",
+      "E",
+      "A",
+      "E",
+      "R",
+      "R",
+      "R",
+      "L",
+      "W",
+      "B",
+      "T",
+      "K",
+      "A"
+    ]
+  },
+  {
+    "id": 46,
+    "top": "YEAST",
+    "spine": "AWARD",
+    "bottom": "WIDOW",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "R",
+      "A",
+      "A",
+      "O",
+      "W",
+      "S",
+      "W",
+      "E",
+      "W",
+      "Y",
+      "D",
+      "T",
+      "I"
+    ]
+  },
+  {
+    "id": 47,
+    "top": "CRASH",
+    "spine": "AMONG",
+    "bottom": "ANGRY",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "Y",
+      "C",
+      "A",
+      "O",
+      "R",
+      "N",
+      "H",
+      "S",
+      "A",
+      "R",
+      "G",
+      "N",
+      "M"
+    ]
+  },
+  {
+    "id": 48,
+    "top": "VAULT",
+    "spine": "UNDER",
+    "bottom": "CORAL",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "A",
+      "L",
+      "U",
+      "E",
+      "O",
+      "T",
+      "N",
+      "A",
+      "C",
+      "D",
+      "R",
+      "L",
+      "V"
+    ]
+  },
+  {
+    "id": 49,
+    "top": "TRUNK",
+    "spine": "UNTIL",
+    "bottom": "VALID",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "K",
+      "T",
+      "U",
+      "R",
+      "N",
+      "I",
+      "N",
+      "A",
+      "V",
+      "T",
+      "L",
+      "D",
+      "I"
+    ]
+  },
+  {
+    "id": 50,
+    "top": "BEAST",
+    "spine": "ATLAS",
+    "bottom": "BASIC",
+    "par": 6,
+    "maxSwaps": 8,
+    "initial": [
+      "S",
+      "T",
+      "A",
+      "A",
+      "E",
+      "A",
+      "C",
+      "I",
+      "B",
+      "L",
+      "S",
+      "B",
+      "T"
+    ]
+  }
+];
+/* PUZZLES_END */
+
+const COORDS = [
+  [0,0],[0,1],[0,2],[0,3],[0,4],
+              [1,2],[2,2],[3,2],
+  [4,0],[4,1],[4,2],[4,3],[4,4]
+];
+
+let currentPuzzle = null, tiles = [], selectedIdx = null, swapsUsed = 0, historyLog = [], isFinished = false;
+const selectEl = document.getElementById("puzzleSelect");
+const STATE_KEY = "swap_cross_oneshot_state_v2";
+
+function getAllState() {
+  try { return JSON.parse(localStorage.getItem(STATE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+
+function savePuzzleState(pId, data) {
+  const all = getAllState();
+  all[pId] = data;
+  localStorage.setItem(STATE_KEY, JSON.stringify(all));
+}
+
+function calcPoints(swaps, par) {
+  const diff = swaps - par;
+  if (diff <= 0) return 100 + Math.abs(diff) * 20;
+  if (diff === 1) return 80;
+  if (diff === 2) return 60;
+  if (diff === 3) return 40;
+  if (diff === 4) return 20;
+  return 5;
+}
+
+function calcLivePreviewPoints(swaps, par) {
+  if (swaps <= par) return 100;
+  return calcPoints(swaps, par);
+}
+
+function updateHeaderBank() {
+  const all = getAllState();
+  const finished = Object.values(all).filter(s => s.isFinished);
+  const total = finished.reduce((acc, s) => acc + s.pts, 0);
+  document.getElementById("totalScoreDisplay").textContent = `🏆 Total Score: ${total} pts (${finished.length}/${PUZZLES.length} solved)`;
+}
+
+function initDropdown() {
+  selectEl.innerHTML = "";
+  const all = getAllState();
+  PUZZLES.forEach((p, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx;
+    const s = all[p.id];
+    const tag = s && s.isFinished ? ` (🔒 ${s.pts} pts)` : (s && s.swapsUsed > 0 ? ` (In progress: ${s.swapsUsed})` : "");
+    opt.textContent = `Puzzle #${p.id}${tag}`;
+    selectEl.appendChild(opt);
+  });
+  selectEl.onchange = e => loadPuzzle(parseInt(e.target.value));
+}
+
+function getSolutionArray(p) {
+  return [
+    p.top[0], p.top[1], p.top[2], p.top[3], p.top[4],
+    p.spine[1], p.spine[2], p.spine[3],
+    p.bottom[0], p.bottom[1], p.bottom[2], p.bottom[3], p.bottom[4]
+  ];
+}
+
+function computeColors(currentTiles, p) {
+  const sol = getSolutionArray(p);
+  const colors = new Array(13).fill("grey");
+  for (let i = 0; i < 13; i++) {
+    if (currentTiles[i] === sol[i]) colors[i] = "green";
+  }
+  function markWordYellows(indices) {
+    const leftoverCounts = {};
+    indices.forEach(idx => {
+      if (colors[idx] !== "green") leftoverCounts[sol[idx]] = (leftoverCounts[sol[idx]] || 0) + 1;
+    });
+    indices.forEach(idx => {
+      if (colors[idx] !== "green" && leftoverCounts[currentTiles[idx]] > 0) {
+        colors[idx] = "yellow";
+        leftoverCounts[currentTiles[idx]]--;
+      }
+    });
+  }
+  markWordYellows([0,1,2,3,4]);
+  markWordYellows([2,5,6,7,10]);
+  markWordYellows([8,9,10,11,12]);
+  return colors;
+}
+
+function loadPuzzle(idx) {
+  currentPuzzle = PUZZLES[idx];
+  const saved = getAllState()[currentPuzzle.id];
+  if (saved) {
+    tiles = [...saved.tiles];
+    swapsUsed = saved.swapsUsed;
+    historyLog = [...(saved.historyLog || [])];
+    isFinished = saved.isFinished;
+  } else {
+    tiles = [...currentPuzzle.initial];
+    swapsUsed = 0;
+    historyLog = [];
+    isFinished = false;
+  }
+  selectedIdx = null;
+  updateHeaderBank();
+  render();
+}
+
+function goNextPuzzle() {
+  const nextIdx = (parseInt(selectEl.value) + 1) % PUZZLES.length;
+  selectEl.value = nextIdx;
+  loadPuzzle(nextIdx);
+}
+
+function render() {
+  const boardEl = document.getElementById("board");
+  boardEl.innerHTML = "";
+  const colors = computeColors(tiles, currentPuzzle);
+  const allGreen = colors.every(c => c === "green");
+
+  document.getElementById("swapsUsedVal").textContent = swapsUsed;
+  document.getElementById("parCountVal").textContent = currentPuzzle.par;
+
+  const swapsCard = document.getElementById("swapsCard");
+  if (swapsUsed <= currentPuzzle.par) swapsCard.className = "stat-card swaps-green";
+  else if (swapsUsed <= currentPuzzle.par + 2) swapsCard.className = "stat-card swaps-orange";
+  else swapsCard.className = "stat-card swaps-red";
+
+  const livePts = allGreen ? calcPoints(swapsUsed, currentPuzzle.par) : calcLivePreviewPoints(swapsUsed, currentPuzzle.par);
+  const ptsEl = document.getElementById("livePtsVal");
+  ptsEl.textContent = livePts;
+  ptsEl.className = "stat-val " + (livePts >= 100 ? "pts-high" : livePts >= 60 ? "pts-mid" : "pts-low");
+
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const tileIdx = COORDS.findIndex(([cr, cc]) => cr === r && cc === c);
+      const div = document.createElement("div");
+      if (tileIdx === -1) div.className = "tile empty";
+      else {
+        const color = colors[tileIdx];
+        div.className = `tile ${color}` + (selectedIdx === tileIdx ? " selected" : "");
+        div.textContent = tiles[tileIdx];
+        div.onclick = () => onTileTap(tileIdx, color);
+      }
+      boardEl.appendChild(div);
+    }
+  }
+
+  if (allGreen) {
+    isFinished = true;
+    const pts = calcPoints(swapsUsed, currentPuzzle.par);
+    savePuzzleState(currentPuzzle.id, { tiles, swapsUsed, historyLog, isFinished: true, pts });
+    showWinModal(pts);
+  } else {
+    document.getElementById("winModal").classList.remove("active");
+  }
+}
+
+function onTileTap(idx, color) {
+  if (color === "green" || isFinished) return;
+  if (selectedIdx === null) { selectedIdx = idx; render(); }
+  else if (selectedIdx === idx) { selectedIdx = null; render(); }
+  else {
+    const temp = tiles[selectedIdx]; tiles[selectedIdx] = tiles[idx]; tiles[idx] = temp;
+    swapsUsed++;
+    const newColors = computeColors(tiles, currentPuzzle);
+    const fixed = (newColors[selectedIdx] === "green" ? 1 : 0) + (newColors[idx] === "green" ? 1 : 0);
+    historyLog.push(fixed === 2 ? "🟩🟩" : fixed === 1 ? "🟩🟨" : "🟨🟨");
+    selectedIdx = null;
+
+    // Persist mid-game state immediately so refreshing cannot reset swaps!
+    const allGreen = newColors.every(c => c === "green");
+    const pts = allGreen ? calcPoints(swapsUsed, currentPuzzle.par) : calcLivePreviewPoints(swapsUsed, currentPuzzle.par);
+    savePuzzleState(currentPuzzle.id, { tiles, swapsUsed, historyLog, isFinished: allGreen, pts });
+
+    const curIdx = parseInt(selectEl.value);
+    initDropdown();
+    selectEl.value = curIdx;
+    updateHeaderBank();
+    render();
+  }
+}
+
+function showWinModal(pts) {
+  const diff = swapsUsed - currentPuzzle.par;
+  const diffStr = diff === 0 ? "EVEN PAR" : (diff > 0 ? `+${diff} OVER PAR` : `${diff} UNDER PAR!`);
+  const modal = document.getElementById("winModal");
+  modal.classList.add("active");
+  document.getElementById("modalTitle").textContent = `🔒 ${pts} POINTS LOCKED!`;
+  document.getElementById("modalSub").textContent = `Finished in ${swapsUsed} Swaps (${diffStr})`;
+  document.getElementById("modalWords").textContent = `${currentPuzzle.top} • ${currentPuzzle.spine} • ${currentPuzzle.bottom}`;
+}
+
+function shareResult() {
+  const pts = calcPoints(swapsUsed, currentPuzzle.par);
+  const diff = swapsUsed - currentPuzzle.par;
+  const diffStr = diff === 0 ? "Par" : (diff > 0 ? `+${diff}` : `${diff}`);
+  const text = `SWAP/CROSS #${currentPuzzle.id} 🎯 ${pts} PTS (${swapsUsed} Swaps / ${diffStr})\n` + historyLog.join("\n");
+  navigator.clipboard.writeText(text);
+  alert("Copied to clipboard!\n\n" + text);
+}
+
+initDropdown();
+if (PUZZLES.length) loadPuzzle(0);
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'inline-block';
+});
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+    });
+  }
+}
+</script>
+
+</body>
+</html>
